@@ -143,6 +143,11 @@ def discover_products(probe=False):
             path = urlsplit(urljoin(BASE, a["href"])).path
             if re.fullmatch(r"/\d+-[a-z0-9-]+", path):
                 cats.add(clean_url(path))
+    if home is not None and len(cats) == 1:
+        t = BeautifulSoup(home.text, "html.parser")
+        print(f"  ! Naslovnica ne izgleda kao shop: HTTP {home.status_code}, server={home.headers.get('server')}, "
+              f"title={t.title.string if t.title else None!r}", flush=True)
+        print("  ! Početak odgovora: " + re.sub(r"\s+", " ", home.text[:600]), flush=True)
     for c in sorted(cats):
         n0 = len(ids)
         ids.update(list_category(c))
