@@ -1,0 +1,34 @@
+# Besplatno dnevno osvježavanje feeda preko GitHub Actions.
+# Feed je javno dostupan na:
+#   https://raw.githubusercontent.com/<korisnik>/<repo>/main/feed/meta-katalog.csv
+# Taj URL ide u Commerce Manager -> Data sources -> Data feed -> Scheduled feed (dnevno, npr. 07:00).
+name: Meta katalog feed
+
+on:
+  schedule:
+    - cron: "17 3 * * *"     # svaki dan ~05:17 po hrvatskom vremenu
+  workflow_dispatch:          # ručno pokretanje: Actions -> Meta katalog feed -> Run workflow
+
+permissions:
+  contents: write
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests beautifulsoup4
+      # nedjeljom i provjera svih ID-eva (nađe proizvode koji nisu ni u jednoj kategoriji)
+      - run: |
+          if [ "$(date -u +%u)" = "7" ]; then python scraper.py --probe; else python scraper.py; fi
+      - name: Spremi feed
+        run: |
+          git config user.name "feed-bot"
+          git config user.email "feed-bot@users.noreply.github.com"
+          git add feed/
+          git diff --cached --quiet || git commit -m "Feed $(date -u +%F)"
+          git push
