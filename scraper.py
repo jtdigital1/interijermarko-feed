@@ -99,6 +99,11 @@ def to_float(v):
         return None
 
 
+def clean_ref(v):
+    v = (v or "").strip()
+    return v if re.fullmatch(r"[\w\-./]{2,70}", v) else ""
+
+
 def text_of(html_fragment):
     t = BeautifulSoup(html_fragment or "", "html.parser").get_text(" ")
     return re.sub(r"\s+", " ", htmlmod.unescape(t)).strip()
@@ -196,9 +201,10 @@ def parse_prices_block(fragment):
         regular = to_float(reg.get_text())
     unit = ""
     txt = s.get_text("\n")
-    um = re.search(r"/\s*za\s*(m2|m²|m|kom)", txt)
+    um = re.search(r"/\s*za\s*(m\s*2|m²|kom|m)(?![a-zžćčšđ])", txt, re.I)
     if um:
-        unit = "m²" if um.group(1) in ("m2", "m²") else um.group(1)
+        u = re.sub(r"\s+", "", um.group(1).lower())
+        unit = "m²" if u in ("m2", "m²") else u
     return price, regular, unit
 
 
@@ -307,7 +313,7 @@ def scrape_product(pid):
                      "availability": avail(buyable), "link": url,
                      "image_link": imgs[0] if imgs else "", "additional_image_link": ",".join(imgs[1:11]),
                      "description": (note(price) + " " + desc).strip()[:5000],
-                     "size": "", "color": "", "mpn": dp.get("reference") or "",
+                     "size": "", "color": "", "mpn": clean_ref(dp.get("reference")),
                      "custom_label_0": "po m2" if unit == "m²" else "",
                      "custom_label_1": "na upit" if not orderable else ("rola" if length_limit else "")})
         return rows
@@ -387,7 +393,7 @@ def scrape_product(pid):
                      "link": urljoin(BASE, j.get("product_url") or url),
                      "image_link": vimg, "additional_image_link": ",".join(others),
                      "description": (note(price) + " " + desc).strip()[:5000],
-                     "size": size, "color": color, "mpn": ref,
+                     "size": size, "color": color, "mpn": clean_ref(ref),
                      "custom_label_0": "po m2" if (u2 or unit) == "m²" else "",
                      "custom_label_1": "na upit" if not orderable else ("dostupno" if buyable else "dimenzija na upit")})
     return rows
