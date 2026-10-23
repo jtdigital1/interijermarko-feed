@@ -40,8 +40,8 @@ from bs4 import BeautifulSoup
 BASE = "https://interijermarko.hr"
 BRAND = "Interijer Marko"
 CURRENCY = "EUR"
-WORKERS = 3          # paralelnih zahtjeva (ne pretjerivati – dijeljeni hosting)
-DELAY = 0.3          # pauza po zahtjevu, po radniku
+WORKERS = 2          # paralelnih zahtjeva (ne pretjerivati – dijeljeni hosting)
+DELAY = 0.8          # pauza po zahtjevu, po radniku
 OUT_DIR = Path(__file__).parent / "feed"
 
 # Kako Meti prijaviti artikle koji se ne mogu kupiti online:
@@ -58,7 +58,8 @@ USE_HIDDEN_PRICES = False
 # ------------------------------------------------------------------ HTTP
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "Mozilla/5.0 (compatible; InterijerMarko-MetaFeed/2.0)",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36 InterijerMarko-MetaFeed/2.0",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "hr-HR,hr;q=0.9",
 })
 warnings = []
@@ -71,7 +72,11 @@ def http(method, url, tries=4, **kw):
             time.sleep(DELAY)
             if r.status_code in (200, 404):
                 return r
+            print(f"  ! HTTP {r.status_code} {url} (server: {r.headers.get('server', '?')})", flush=True)
+            if r.status_code in (403, 429, 503):
+                time.sleep(20 * (i + 1))   # server nas usporava – pričekaj duže
         except requests.RequestException as e:
+            print(f"  ! {type(e).__name__} {url}", flush=True)
             if i == tries - 1:
                 warnings.append(f"{url}: {e}")
         time.sleep(3 * (i + 1))
